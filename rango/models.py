@@ -1,5 +1,6 @@
 from django.db import models
 from django.template.defaultfilters import slugify
+from django.contrib.auth.models import User
 
 
 class Category(models.Model):
@@ -30,3 +31,16 @@ class Page(models.Model):
     
     def __str__(self):
         return self.title
+
+
+class UserProfile(models.Model):
+    # Links UserProfile to a User model instance.
+    user = models.OneToOneField(User)
+
+    # Additional User attributes to include.
+    website = models.URLField(blank=True)
+    picture = models.ImageField(upload_to='profile_images', blank=True)
+
+    # Return out something useful
+    def __str__(self):
+        return self.user.username
