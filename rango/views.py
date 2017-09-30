@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth import authenticate, login, logout
@@ -7,20 +9,36 @@ from django.contrib.auth.decorators import login_required
 from rango.models import Category, Page
 from rango.forms import CategoryForm, PageForm, UserForm, UserProfileForm
 
-def index(request):    
+def index(request):
+    request.session.set_test_cookie()
     # Query db for first 5 categories with highest likes
     category_list = Category.objects.order_by('-likes')[:5]
     # Query db for first 5 pages with most views
     page_list = Page.objects.order_by('-views')[:5]
     # Add these lists to the template context
     context_dict = {'categories': category_list,
-                    'pages': page_list}
-    
-    return render(request, 'rango/index.html', context=context_dict)
+                    'pages': page_list }
 
-def about(request):    
-    # A dictionary to pass my name to the template renderer
+    # Helper function handles the cookies
+    visitor_cookie_handler(request)
+    context_dict['visits'] = request.session['visits']
+ 
+
+    # Obtain response object
+    return render(request, 'rango/index.html',
+                             context=context_dict)
+
+def about(request):
+    if request.session.test_cookie_worked():
+        print("TEST COOKIE WORKED!")
+        request.session.delete_test_cookie()
+
+    # A dictionary to pass context to the template renderer
     context_dict = {'my_name': "TonyVEVO"}
+
+    visitor_cookie_handler(request)
+    context_dict['visits'] = request.session['visits']
+    
     
     return render (request, 'rango/about.html', context=context_dict)
 
@@ -113,7 +131,7 @@ def register(request):
             if 'picture' in request.FILES:
                 profile.picture = request.FILES['picture']
                 profile.save()
-                # Indicate that the template registration was successful
+                # Indicate that template registration was successful
                 registered = True
         else:
             # Invalid form(s) and/or other problems
@@ -132,8 +150,8 @@ def register(request):
 def user_login(request):
     if request.method == 'POST':
         # Obtain the username & password from the login form.
-        # Use request.POST.get('variable') to return None if the value
-        # does not exist instead of a KeyError exception.
+        # Use request.POST.get('variable') to return None if the
+        # value does not exist instead of a KeyError exception.
         username = request.POST.get('username')
         password = request.POST.get('password')
 
@@ -154,7 +172,8 @@ def user_login(request):
                 return HttpResponse("Your Rango account was disabled.")
         else:
             # Bad login details were provided.
-            print("Invalid login details: {0}, {1}".format(username, password))
+            print("Invalid login details: {0}, {1}".format(username,
+                                                           password))
             return HttpResponse("Invalid login details supplied.")
     # If the request is not a HTTP POST..
     else:
@@ -169,3 +188,35 @@ def restricted(request):
 def user_logout(request):
     logout(request)
     return HttpResponseRedirect(reverse('index'))
+
+# Site counter helper function
+def visitor_cookie_handler(request):
+    # Use the COOKIES.get() function to obtain the visits cookie.
+    # Cast the value returned to an integer or set the value to
+    # 1 if the cookie doesn't exist.
+    visits = int(get_server_side_cookie(request, 'visits', '1'))
+    last_visit_cookie = get_server_side_cookie(request, 'last_visit',
+                                            str(datetime.now()))
+    last_visit_time = datetime.strptime(last_visit_cookie[:-7],
+                                        '%Y-%m-%d %H:%M:%S')
+
+    # if it's been more than a day since the last visit..
+    if (datetime.now() - last_visit_time).days > 0:
+        # Update the cookie visits count & last_visit time
+        visits = visits + 1
+        request.session['last_visit'] = str(datetime.now())
+    else:
+        visits = 1
+        # Set the last visit cookie
+        request.session['last_visit'] = last_visit_cookie
+
+    # Update/set the visits cookie
+    request.session['visits'] = visits
+    
+# Helper function that asks the request for a cookie
+def get_server_side_cookie(request, cookie, default_val=None):
+    val = request.session.get(cookie)
+    if not val:
+        val = default_val
+    return val
+
