@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth import authenticate, login, logout
 from django.core.urlresolvers import reverse
@@ -51,7 +51,7 @@ def show_category(request, category_name_slug):
         # Try to find a category with the provided name-slug 
         category = Category.objects.get(slug=category_name_slug)
         # Retreive all pages associated to the given category
-        pages = Page.objects.filter(category=category)
+        pages = Page.objects.filter(category=category).order_by('-views')
         # Add the list of pages to the template context
         context_dict['pages'] = pages
         # Add the existing category object to the template context
@@ -62,7 +62,19 @@ def show_category(request, category_name_slug):
         # for the non-existing category
         context_dict['category'] = None
         context_dict['pages'] = None
-        
+
+    # Create a default query based on the category name
+    # to be shown in the search box
+    context_dict ['query'] = "Search "+category.name
+    result_list = []
+    if request.method == 'POST':
+        query = request.POST['query'].strip()
+        if query:
+            # Run our Search API function to get the results list
+            result_list = Page.objects.filter(title__icontains=query)
+            context_dict['query'] = query
+            context_dict['result_list'] = result_list
+                
     return render(request, 'rango/category.html', context_dict)
 
 @login_required
@@ -157,4 +169,21 @@ def search(request):
 
     context_dict = {'result_list': result_list, 'value': value}
     return render(request, 'rango/search.html', context_dict)
-    
+
+def track_url(request):
+    page_id = None
+    url = '/rango/'
+    if request.method == 'GET':
+        if 'page_id' in request.GET:
+            page_id = request.GET['page_id']
+
+            try:
+                page = Page.objects.get(id=page_id)
+                page.views+=1
+                page.save()
+                url = page.url
+            except:
+                pass
+            
+    return redirect(url)
+            
