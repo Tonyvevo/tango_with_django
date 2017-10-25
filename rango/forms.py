@@ -54,8 +54,8 @@ class PageForm(forms.ModelForm):
 
 
 class UserForm(forms.ModelForm):
-
-    password = forms.CharField(widget=forms.PasswordInput(), help_text="Please enter a password.")
+    password = forms.CharField(widget=forms.PasswordInput(),
+                               help_text="Please enter a password.")
     username = forms.CharField(help_text="Please enter a username")
  
 
@@ -63,13 +63,19 @@ class UserForm(forms.ModelForm):
         model = User
         fields = ('username', 'email', 'password')
 
-
         
-
-
 class UserProfileForm(forms.ModelForm):
+    website = forms.URLField(required=False)
+    picture = forms.ImageField(required=False)
 
-
+    
     class Meta:
         model = UserProfile
-        fields = ('website', 'picture')
+        exclude = ('user',)
+
+
+class SearchForm(forms.Form):
+    query = forms.CharField(widget=forms.TextInput(
+        attrs={'class':'form-control', 'size':'50'}),
+        error_messages={'required': 'Please key in query then click search button'},
+        label='')

@@ -18,19 +18,20 @@ from django.contrib import admin
 from django.conf.urls import include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.core.urlresolvers import reverse
 
 from registration.backends.simple.views import RegistrationView
 
-from rango import views
+from rango.views import IndexView
 
 
 class MyRegistrationView(RegistrationView):
     def get_success_url(self, user):
-        return '/rango/'
+        return reverse ('rango:register_profile')
 
 
 urlpatterns = [
-    url(r'^$', views.index, name='index'),
+    url(r'^$', IndexView.as_view(), name='index'),
     url(r'^rango/', include('rango.urls')),
     url(r'^admin/', admin.site.urls),
     url(r'^accounts/register/$', MyRegistrationView.as_view(),
