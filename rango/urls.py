@@ -2,7 +2,7 @@ from django.conf.urls import url
 from django.contrib.auth.decorators import login_required
 
 from rango.views import IndexView, AboutView, ShowCategoryView, AddCategoryView
-from rango.views import AddPageView, RestrictedView, WebSearchView
+from rango.views import AddPageView, RestrictedView, PageSearchView
 from rango.views import TrackUrlView, RegisterProfile 
 from rango import views
 
@@ -18,10 +18,13 @@ urlpatterns = [
         login_required(AddPageView.as_view()), name='add_page'),
     url(r'^restricted/$', login_required(RestrictedView.as_view()),
         name='restricted' ),
-    url(r'^search/$', login_required(WebSearchView.as_view()), name='search'),
+    url(r'^search/$', login_required(PageSearchView.as_view()), name='search'),
     url(r'^goto/$', TrackUrlView.as_view(), name='goto'),
     url(r'^register_profile/$', login_required(RegisterProfile.as_view()),
         name='register_profile'),
     url(r'^profile/(?P<username>[\w\-]+)/$', views.profile, name='profile'),
     url(r'^profiles/$', views.list_profiles, name='list_profiles'),
+    url(r'^like/$', views.like_category, name='like_category'),
+    url(r'^suggest/$', views.suggest_category, name='suggest_category'),
+    url(r'^add/$', views.auto_add_page, name='auto_add_page')
 ]

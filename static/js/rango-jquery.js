@@ -11,5 +11,5 @@ $(document).ready(function(){
     },
     function(){
         $(this).css('color', 'blue');
-    })
+	});
 });

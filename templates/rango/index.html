@@ -20,7 +20,9 @@
         <ul>
             {% for category in categories %}
             <li><a href="{% url 'rango:show_category' category.slug %}">
-                {{ category.name }}</a></li>
+                {{ category.name }}</a>
+				<span class="badge badge-pill badge-primary">{{ category.likes }} likes</span>
+			</li>
             {% endfor %}
         </ul>
         {% else %}
@@ -35,7 +37,9 @@
         {% if pages %}
         <ul>
             {% for page in pages %}
-            <li><a href="{{ page.url }}">{{ page.title }}</a></li>
+            <li><a href="{{ page.url }}">{{ page.title }}</a>
+				<span class="badge badge-pill badge-primary">{{ page.views }} views</span>
+			</li>
             {% endfor %}
         </ul>
         {% else %}

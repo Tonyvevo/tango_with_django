@@ -6,7 +6,7 @@
 {% block body_block %}
 <div>
     <br />
-    <h2>Search news, blogs & discussions with Rango</h2>
+    <h2>Search for page in Categories</h2>
     <br/>
     <form class="form-inline"  role='form' id="search_form" 
 	method="post" action="{% url 'rango:search' %}">
@@ -20,24 +20,22 @@
 	    </div>
         {% endfor %}
         <button class="btn btn-primary" type="submit" name="submit"
-                value="Search">Search Web</button>
+                value="Search">Find Page</button>
     </form>
-
     <div>
-        {% if search_list %}
+    {% if result_list %}
         <h3>Results</h3>
         <!--Display search results in an ordered list -->
         <div class="list-group">
-        {% for search_result in search_list %}
-            <div class="list-group-item">
+        {% for page in result_list %}
+            <div class="list group-item">
                 <h4 class="list-group-item-heading">
-                    <a href="{{ search_result.link }}" target="_blank">{{ search_result.title }}</a>
-                    <h4>
-                    <p class="list-group-item-text">{{ search_result.summary }}...</p>
+                    <a href="{% url 'rango:goto' %}?page_id={{page.id}}">{{ page.title }}</a>
+                </h4>
             </div>
         {% endfor %}
         </div>
-        {% endif %}
-    </div>
+    {% endif %}
+    </div>    
 </div>
 {% endblock%}

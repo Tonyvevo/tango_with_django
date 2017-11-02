@@ -51,7 +51,7 @@ class IndexView(TemplateView):
         last_visit_time = datetime.strptime(last_visit_cookie[:-7],
                                             '%Y-%m-%d %H:%M:%S')
         # if it's been more than a day since the last visit..
-        if (datetime.now() - last_visit_time).days > 0:
+        if (datetime.now() - last_visit_time).seconds >= 86400:
             # Update the cookie visits count & last_visit time
             visits = visits + 1
             request.session['last_visit'] = str(datetime.now())
@@ -83,55 +83,39 @@ class AboutView(TemplateView):
         return context
     
 
-class ShowCategoryView(TemplateView, FormView):
+class ShowCategoryView(WebhoseMixin, TemplateView, FormView):
     template_name = "rango/category.html"
     model = Category, Page
     form_class = SearchForm
     
-    def get_context_data(self, category_name_slug, query=None, **kwargs):
+    def get_context_data(self, category_name_slug, **kwargs):
         try:
             category = Category.objects.get(slug=category_name_slug)
             pages = Page.objects.filter(category=category).order_by('-views')
         except Category.DoesNotExist:
             category = None
             pages = None
-        context = {}
-        context['category'] = category
-        context['pages'] = pages
-        context['form'] = self.get_form()
-        if query:
-            context['query'] = query
-            context['result_list'] = self.get_queryset(
-                category_name_slug, query)
-        return context
+        kwargs['category'] = category
+        kwargs['pages'] = pages        
+        if 'form' not in kwargs:
+            kwargs['form'] = self.get_form()
+        return kwargs
     
-    def get_queryset(self, category_name_slug, query):
-        page_list = Page.objects.filter(title__icontains=query)
-        category = Category.objects.get(slug=category_name_slug)
-        queryset = []
-        for page in page_list:
-            if page.category == category:
-                queryset.append(page)
-        self.queryset = queryset
-
-        if self.queryset is None:
-            if self.model:
-                return self.model._default_manager.all()
-            else:
-                raise ImproperlyConfigured(
-                    "%(cls)s is missing a QuerySet. Define "
-                    "%(cls)s.model, %(cls)s.queryset, or override "
-                    "%(cls)s.get_queryset()." % {
-                        'cls': self.__class__.__name__
-                        }
-                    )
-        return queryset
-                
-    def post(self, request, category_name_slug, *args, **kwargs):
-        form = self.get_form()
-        query = request.POST.get('query')
+    def form_invalid(self, category_name_slug, query):
         return self.render_to_response(self.get_context_data(
-            category_name_slug, query=query, form=form)) 
+            category_name_slug, form=query))
+
+    def form_valid(self, category_name_slug, query):
+        return self.render_search_response(self.get_context_data(
+            category_name_slug, form=query))
+        
+    def post(self, request, *args, **kwargs):
+        category_name_slug = kwargs['category_name_slug']
+        query = self.get_form()
+        if query.is_valid():
+            return self.form_valid(category_name_slug, query)
+        else:
+            return self.form_invalid(category_name_slug, query)
 
 
 class AddCategoryView(FormView):
@@ -202,24 +186,45 @@ class RestrictedView(TemplateView):
         return super(RestrictedView, self).get_context_data(**kwargs)
 
 
-class WebSearchView(WebhoseMixin, FormView):
+class PageSearchView(FormView):
     form_class = SearchForm
     template_name = "rango/search.html"
 
-    def form_invalid(self, query):
-        return self.render_to_response(self.get_context_data(form=query))
+    def get_context_data(self, query=None, **kwargs):
+        context = {}
+        context['form'] = self.get_form()
+        if query:
+            context['query'] = query
+            context['result_list'] = self.get_queryset(query)
+        return context
+    
+    def get_queryset(self, query):
+        page_list = Page.objects.filter(title__icontains=query)
+        queryset = []
+        for page in page_list:
+            queryset.append(page)
+        self.queryset = queryset
 
-    def form_valid(self, query):
-        return self.render_search_response(self.get_context_data(form=query))
-        
+        if self.queryset is None:
+            if self.model:
+                return self.model._default_manager.all()
+            else:
+                raise ImproperlyConfigured(
+                    "%(cls)s is missing a QuerySet. Define "
+                    "%(cls)s.model, %(cls)s.queryset, or override "
+                    "%(cls)s.get_queryset()." % {
+                        'cls': self.__class__.__name__
+                        }
+                    )
+        return queryset
+                
     def post(self, request, *args, **kwargs):
-        query = self.get_form()
-        if query.is_valid():
-            return self.form_valid(query)
-        else:
-            return self.form_invalid(query)
-                          
-
+        form = self.get_form()
+        query = request.POST.get('query')
+        return self.render_to_response(self.get_context_data(
+            query=query, form=form))
+    
+    
 class TrackUrlView(RedirectView):
     url = "/rango/"
     def get(self, request, *args, **kwargs):
@@ -293,3 +298,54 @@ def list_profiles(request):
 
     return render(request, 'rango/list_profiles.html',
                   {'userprofile_list': userprofile_list})
+
+@login_required
+def like_category(request):
+    cat_id = None
+    if request.method == "GET":
+        cat_id = request.GET['category_id']
+        likes = 0
+    if cat_id:
+        cat = Category.objects.get(id=int(cat_id))
+        if cat:
+            likes = cat.likes + 1
+            cat.likes = likes
+            cat.save()
+    response = "{} people like this category".format(likes)
+    return HttpResponse(response)
+
+def get_category_list(max_results=0, starts_with=''):
+    cat_list = []
+    if starts_with:
+        cat_list = Category.objects.filter(name__istartswith=starts_with)
+    if max_results > 0:
+        if len(cat_list) > max_results:
+            cat_list = cat_list[:max_results]
+    return cat_list
+
+def suggest_category(request):
+    cat_list = []
+    starts_with = ''
+    if request.method == 'GET':
+        starts_with = request.GET['suggestion']
+    cat_list = get_category_list(8, starts_with)
+    return render(request, 'rango/cats.html', {'cats': cat_list})
+
+@login_required
+def auto_add_page(request):
+    cat_id = None
+    url = None
+    title = None
+    context_dict = {}
+    if request.method == 'GET':
+        cat_id = request.GET['category_id']
+        url = request.GET['url']
+        title = request.GET['title']
+        if cat_id:
+            category = Category.objects.get(id=int(cat_id))
+            p = Page.objects.get_or_create(category=category,
+                                           title=title, url=url)
+            pages = Page.objects.filter(category=category).order_by('-views')
+            # Adds our results list to the template context under name pages.
+            context_dict['pages'] = pages
+    return render(request, 'rango/page_list.html', context_dict)

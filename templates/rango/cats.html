@@ -4,16 +4,16 @@
         {% if c == act_cat %}
             <li>
             <strong>
-                <a href="{% url 'rango:show_category' c.slug %}">{{ c.name }}</a></li>
+                <a href="{% url 'rango:show_category' c.slug %}">{{ c.name }}</a>
             </strong>    
             </li>
         {% else %}    
             <li>    
-                <a href="{% url 'rango:show_category' c.slug %}">{{ c.name }}</a></li>
+                <a href="{% url 'rango:show_category' c.slug %}">{{ c.name }}</a>
             </li>
         {% endif %}
     {% endfor %}
 {% else %}
-    <li><strong>There are no categories present.</strong></li>
+    <li><strong>No categories present for that search.</strong></li>
 {% endif %}
 </ul>

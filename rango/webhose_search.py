@@ -5,16 +5,16 @@ import urllib.request
 
 class WebhoseMixin(object):
     
-    def render_search_response(self, context, **response_kwargs):
-        form = context['form']
+    def render_search_response(self, kwargs, **response_kwargs):
+        form = kwargs['form']
         search_terms = form.cleaned_data['query']
         search_results = self.search_query(search_terms)
-        context['search_list'] = search_results
+        kwargs['search_list'] = search_results
         response_kwargs.setdefault('content_type', self.content_type)
         return self.response_class(
             request=self.request,
             template=self.get_template_names(),
-            context=context,
+            context=kwargs,
             using=self.template_engine,
             **response_kwargs
             )
@@ -40,7 +40,7 @@ class WebhoseMixin(object):
                       'ts=1505823665729&sort=crawled&size={size}&'
                       'q=language%3Aenglish%20{query}').format(
                           root_url=root_url, key=webhose_api_key,
-                          query=query_string, size=15)
+                          query=query_string, size=8)
         results=[]
         try:
             #Convert the Webhose API response to a Python dictionary
