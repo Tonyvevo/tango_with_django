@@ -158,6 +158,7 @@ class AddPageView(FormView, TemplateView):
         page = form.save(commit=False)
         category = Category.objects.get(slug=category_name_slug)
         page.category = category
+        page.first_visit = datetime.now()
         page.save()
         return HttpResponseRedirect(self.get_success_url(
             category_name_slug))
